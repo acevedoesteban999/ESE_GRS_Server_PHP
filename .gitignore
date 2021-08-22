@@ -1,0 +1,4 @@
+#Listado de archivos ignorados
+vendor
+composer.json
+composer.lock
