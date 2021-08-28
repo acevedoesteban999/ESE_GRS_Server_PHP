@@ -27,6 +27,99 @@ class Chat_ESE_GRS implements MessageComponentInterface
     {
         return str_contains($this->Tipo_Clientes["$id"],$tipo);
     }
+    public function ReenviarMensaje($from,$msg)
+    {
+        if($this->EsTipo("[ESE]",$from->resourceId) || $this->EsTipo("[USER]",$from->resourceId))//if($from===$this->ESE||$from===$this->USER)
+        {
+            foreach ($this->clients as $client) 
+            {
+                if ( $from !== $client) 
+                {
+                    if($this->EsTipo("[Windows]",$client->resourceId)||$this->EsTipo("[HTML]",$client->resourceId)||$this->EsTipo("[WEBPUENTE]",$client->resourceId))
+                    {
+                        echo "Enviado a ($client->resourceId)".$this->Tipo_Clientes["$client->resourceId"]."\n";
+                        $client->send($msg);
+                    }
+                   
+                }
+            }
+        }
+    }
+    public function AvisarHTMLs($from,$msg)
+    {
+        foreach ($this->clients as $client) 
+        {
+            if($from !== $client && $this->EsTipo("[HTML]",$client->resourceId))
+            {
+                $toSend=$msg[0];
+                $toSend.=$from->resourceId;
+                $toSend.=chr(1);
+                echo "Avisando a cliente ($client->resourceId)" . $this->Tipo_Clientes["$client->resourceId"] . "\n";
+                $client->send($toSend);
+            }                
+        }
+    }
+    public function InformasHTMLExistentes($from)
+    {
+        $toSend=chr(47);
+        $toSend.=$from->resourceId;
+        $toSend.=chr(1);
+        foreach ($this->clients as $client)
+        {
+            if( $from !== $client)
+            {    
+
+                if($this->EsTipo("[Windows]",$client->resourceId))
+                {
+                    $toSend.=chr(39);
+                    if($this->EsTipo("[USER]",$client->resourceId))
+                    {
+                        $toSend.=chr(51);
+                    }
+                    $toSend.=chr(1);
+                    $toSend.=$client->resourceId;
+                    $toSend.=chr(1);
+                }
+                else if($this->EsTipo("[HTML]",$client->resourceId))
+                {
+                    $toSend.=chr(47);
+                    $toSend.=chr(1);
+                    $toSend.=$client->resourceId;
+                    $toSend.=chr(1);
+                }
+                else if($this->EsTipo("[WEBPUENTE]",$client->resourceId))
+                {
+                    $toSend.=chr(107);
+                    if($this->EsTipo("[USER]",$client->resourceId))
+                    {
+                        $toSend.=chr(51);
+                    }
+                    if($this->EsTipo("[ESE]",$client->resourceId))
+                    {
+                        $toSend.=chr(35);
+                    }
+                    $toSend.=chr(1);
+                    $toSend.=$client->resourceId;
+                    $toSend.=chr(1);
+                }
+                else if($this->EsTipo("[ESE]",$client->resourceId))
+                {
+                    $toSend.=chr(35);
+                    $toSend.=chr(1);
+                    $toSend.=$client->resourceId;
+                    $toSend.=chr(1);
+                }
+                else
+                {
+                    $toSend.=chr(1);
+                    $toSend.=$client->resourceId;
+                    $toSend.=chr(1);
+                }
+            }
+        }
+        echo "Informando a ciente HTML de existencia strlen:". strlen($toSend) . "(". $toSend. ")\n";
+        $from->send($toSend);
+    }
     public function __construct()
     {
         $this->clients = new \SplObjectStorage;
@@ -61,14 +154,17 @@ class Chat_ESE_GRS implements MessageComponentInterface
                     echo "Asignado Typo Windows a ($from->resourceId)\n";
                     $this->Tipo_Clientes["$from->resourceId"].="[Windows]";
                     $from->send($toSend);
+                    $this->AvisarHTMLs($from,$msg);
                     $this->MostrarClientes();
                     return;
             case chr(47)://HTML
-                    $toSend=chr(47);
-                    $toSend[1]=chr(1);
+                    //$toSend=chr(47);
+                    //$toSend[1]=chr(1);
                     echo "Asignado Typo HTML a ($from->resourceId)\n";
                     $this->Tipo_Clientes["$from->resourceId"]="[HTML]";
-                    $from->send($toSend);
+                    //$from->send($toSend);
+                    $this->InformasHTMLExistentes($from);
+                    $this->AvisarHTMLs($from,$msg);
                     $this->MostrarClientes();
                     return;
             case chr(35)://ESE
@@ -87,6 +183,7 @@ class Chat_ESE_GRS implements MessageComponentInterface
                         echo "Avidando a WEBPUENTE de existencia ESE\n";
                         $this->Tipo_Clientes["WEBPUENTE"]->send($toSend);
                     }
+                    $this->AvisarHTMLs($from,$msg);
                 }   
                 else
                 {
@@ -118,6 +215,7 @@ class Chat_ESE_GRS implements MessageComponentInterface
                     unset($this->Tipo_Clientes["ESE"]);
                     $this->Tipo_Clientes["$from->resourceId"]=str_replace("[ESE]","",$this->Tipo_Clientes["$from->resourceId"]);
                     echo "($from->resourceId)-->" . $this->Tipo_Clientes["$from->resourceId"] . "\n";
+                    $this->AvisarHTMLs($from,$msg);
                 }
                 else
                     echo "Denegando Perdida de USER\n";
@@ -140,6 +238,7 @@ class Chat_ESE_GRS implements MessageComponentInterface
                         echo "Avidando a WEBPUENTE de existencia USER\n";
                         $this->Tipo_Clientes["WEBPUENTE"]->send($toSend);
                     }
+                    $this->AvisarHTMLs($from,$msg);
                 }
                 else
                 {
@@ -167,6 +266,7 @@ class Chat_ESE_GRS implements MessageComponentInterface
                     echo "($from->resourceId)" . $this->Tipo_Clientes["$from->resourceId"] . "\n";
                     //$this->USER=-1;
                     unset($this->Tipo_Clientes["USER"]);
+                    $this->AvisarHTMLs($from,$msg);
                 }
                 else
                     echo "Denegando Perdida de USER\n";
@@ -182,6 +282,7 @@ class Chat_ESE_GRS implements MessageComponentInterface
                     $this->Tipo_Clientes["WEBPUENTE"]=$from;
                     $this->Tipo_Clientes["$from->resourceId"].="[WEBPUENTE]";
                     echo "($from->resourceId)" . $this->Tipo_Clientes["$from->resourceId"] . "\n";
+                    $this->AvisarHTMLs($from,$msg);
                 }
                 else
                     echo "Denegando conexion cliente WEBPUENTE\n";
@@ -222,21 +323,7 @@ class Chat_ESE_GRS implements MessageComponentInterface
                 return;      
             
         }
-        if($this->EsTipo("[ESE]",$from->resourceId) || $this->EsTipo("[USER]",$from->resourceId))//if($from===$this->ESE||$from===$this->USER)
-        {
-            foreach ($this->clients as $client) 
-            {
-                if ( $from !== $client) 
-                {
-                    if($this->EsTipo("[Windows]",$client->resourceId)||$this->EsTipo("[WEBPUENTE]",$client->resourceId))
-                    {
-                        echo "Enviado a ($client->resourceId)".$this->Tipo_Clientes["$client->resourceId"]."\n";
-                        $client->send($msg);
-                    }
-                   
-                }
-            }
-        }
+        $this->ReenviarMensaje($from,$msg);
         $this->MostrarClientes();
     }
 
@@ -244,6 +331,7 @@ class Chat_ESE_GRS implements MessageComponentInterface
     {
         echo "\n-----------------------------\n($conn->resourceId)" . $this->Tipo_Clientes["$conn->resourceId"] . "\n";
         // The connection is closed, remove it, as we can no longer send it messages
+        $this->AvisarHTMLs($conn,chr(119));
         if($this->EsTipo("[WEBPUENTE]",$conn->resourceId))
         {
             unset($this->Tipo_Clientes["WEBPUENTE"]);
