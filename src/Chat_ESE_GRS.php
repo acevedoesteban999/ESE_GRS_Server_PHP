@@ -38,7 +38,7 @@ class Chat_ESE_GRS implements MessageComponentInterface
                     if($this->EsTipo("[Windows]",$client->resourceId)||$this->EsTipo("[HTML]",$client->resourceId)||$this->EsTipo("[WEBPUENTE]",$client->resourceId))
                     {
                         echo "Enviado a ($client->resourceId)".$this->Tipo_Clientes["$client->resourceId"]."\n";
-                        $client->send($msg);
+                        $this->Transmitir($client,$msg);// $client->send($msg);
                     }
                    
                 }
@@ -119,6 +119,27 @@ class Chat_ESE_GRS implements MessageComponentInterface
         }
         echo "Informando a ciente HTML de existencia strlen:". strlen($toSend) . "(". $toSend. ")\n";
         $from->send($toSend);
+    }
+    function Transmitir($from,$msg)
+    {
+        
+        $toSend=$msg;
+        if($this->EsTipo("[HTML]",$from->resourceId))
+        {
+            $cont=0;
+            for($i=0;$i<strlen($msg);$i++)
+            {
+                $byte=$msg[$i];
+                if(ord($byte)>=128) //////////////Codific_UTF_8///////////////////////
+                {
+                    $toReplace=chr(2);
+                    $toReplace.=chr(ord($byte)-128);
+                    $toSend=substr_replace($toSend,$toReplace,$i+$cont++,1);   
+                }   
+            }
+        }
+        $from->send($toSend);
+        //echo $toSend."\n";
     }
     public function __construct()
     {
@@ -344,7 +365,7 @@ class Chat_ESE_GRS implements MessageComponentInterface
             {
                 $toSend=chr(111);
                 $toSend[1]=chr(1);
-                $this->WEBPUENTE->send($toSend);
+                $this->Tipo_Clientes["WEBPUENTE"]->send($toSend);
             }
             echo "Cliente ESE desconectado\n";
         }
@@ -355,7 +376,7 @@ class Chat_ESE_GRS implements MessageComponentInterface
             {
                 $toSend=chr(55);
                 $toSend[1]=chr(1);
-                $this->WEBPUENTE->send($toSend);
+                $this->Tipo_Clientes["WEBPUENTE"]->send($toSend);
             }
             echo "Cliente USER desconectado\n";
         }
